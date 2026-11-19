@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azzdat CobolCraft RL Benchmark Showcase</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-orange: #d29922;
+            --accent-red: #f85149;
+            --badge-bg: rgba(56, 139, 253, 0.15);
+            --badge-border: rgba(56, 139, 253, 0.4);
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --bg-tertiary: #eaeef2;
+            --border-color: #d0d7de;
+            --text-primary: #1f2328;
+            --text-secondary: #656d76;
+            --text-muted: #8c959f;
+            --accent-blue: #0969da;
+            --accent-green: #1a7f37;
+            --accent-orange: #9a6700;
+            --accent-red: #cf222e;
+            --badge-bg: rgba(9, 105, 218, 0.1);
+            --badge-border: rgba(9, 105, 218, 0.25);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-title h1 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+        }
+
+        .tag-banner {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background-color: var(--badge-bg);
+            border: 1px solid var(--badge-border);
+            color: var(--accent-blue);
+            text-transform: uppercase;
+        }
+
+        .theme-toggle {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .layout-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            height: calc(100vh - 61px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 340px;
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .task-list {
+            list-style: none;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .task-item {
+            padding: 12px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s ease-in-out;
+            background: transparent;
+        }
+
+        .task-item:hover {
+            background-color: var(--bg-tertiary);
+            border-color: var(--border-color);
+        }
+
+        .task-item.active {
+            background-color: var(--bg-tertiary);
+            border-color: var(--accent-blue);
+        }
+
+        .task-item-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        .task-item-badges {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        /* Detail Pane */
+        .detail-pane {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px 48px;
+            background-color: var(--bg-primary);
+        }
+
+        .detail-header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 28px;
+        }
+
+        .detail-id {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent-blue);
+            margin-bottom: 6px;
+        }
+
+        .detail-title {
+            font-size: 1.85rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+            letter-spacing: -0.5px;
+        }
+
+        .badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 12px;
+            border: 1px solid transparent;
+        }
+
+        .badge-category {
+            background-color: var(--badge-bg);
+            border-color: var(--badge-border);
+            color: var(--accent-blue);
+        }
+
+        .badge-difficulty-medium-hard {
+            background-color: rgba(210, 153, 34, 0.15);
+            border-color: rgba(210, 153, 34, 0.4);
+            color: var(--accent-orange);
+        }
+
+        .badge-difficulty-hard {
+            background-color: rgba(248, 81, 73, 0.15);
+            border-color: rgba(248, 81, 73, 0.4);
+            color: var(--accent-red);
+        }
+
+        .badge-timeout {
+            background-color: var(--bg-tertiary);
+            border-color: var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .callout-box {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-blue);
+            border-radius: 6px;
+            padding: 16px 20px;
+            margin-bottom: 28px;
+        }
+
+        .callout-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .callout-content {
+            font-size: 0.92rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        .section-block {
+            margin-bottom: 32px;
+        }
+
+        .section-heading {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
+        }
+
+        .content-body {
+            font-size: 0.95rem;
+            line-height: 1.68;
+            color: var(--text-secondary);
+        }
+
+        .content-body p {
+            margin-bottom: 14px;
+        }
+
+        .content-body ul {
+            margin-left: 24px;
+            margin-bottom: 16px;
+        }
+
+        .content-body li {
+            margin-bottom: 6px;
+        }
+
+        .code-box {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px 18px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            margin: 14px 0;
+            overflow-x: auto;
+            color: var(--text-primary);
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn-action {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+    </style>
+</head>
+<body data-theme="dark">
+    <header>
+        <div class="header-title">
+            <h1>Azzdat Harbor RL Benchmark Showcase</h1>
+            <span class="tag-banner">CobolCraft Suite</span>
+        </div>
+        <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">☀️ Light Mode</button>
+    </header>
+
+    <div class="layout-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">Benchmark Tasks</div>
+            <ul class="task-list" id="taskList">
+                <!-- Dynamically populated -->
+            </ul>
+        </aside>
+
+        <!-- Main Detail Pane -->
+        <main class="detail-pane" id="detailPane">
+            <div id="loading" style="color: var(--text-secondary); padding: 40px;">Loading tasks...</div>
+        </main>
+    </div>
+
+    <script>
+        let allTasks = [];
+        let activeTaskId = null;
+
+        function toggleTheme() {
+            const current = document.body.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.body.setAttribute('data-theme', next);
+            document.getElementById('themeBtn').textContent = next === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+            localStorage.setItem('theme', next);
+        }
+
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            document.body.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeBtn').textContent = savedTheme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+        }
+
+        async function fetchTasks() {
+            const isFileProtocol = window.location.protocol === 'file:';
+            const apiUrl = isFileProtocol ? 'http://localhost:8000/api/tasks' : '/api/tasks';
+
+            try {
+                const res = await fetch(apiUrl);
+                allTasks = await res.json();
+                renderTaskList();
+                if (allTasks.length > 0) {
+                    selectTask(allTasks[0].id);
+                }
+            } catch (err) {
+                const helpText = isFileProtocol ? `
+                    <div style="margin-top: 16px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; color: var(--text-primary); text-align: left;">
+                        <h4 style="margin-bottom: 8px; color: var(--accent-blue);">How to run the showcase server:</h4>
+                        <p style="margin-bottom: 10px; color: var(--text-secondary); font-size: 0.9rem;">
+                            Direct file opening (<code>file:///</code>) cannot serve tasks dynamically without the Python process running.
+                        </p>
+                        <ol style="margin-left: 20px; line-height: 1.8; font-size: 0.9rem;">
+                            <li>Start the backend process in your terminal:<br>
+                                <code style="background: var(--bg-tertiary); padding: 4px 8px; border-radius: 4px; display: inline-block; margin: 4px 0;">python adzzat-cobolcraft-tasks/web/server.py</code>
+                            </li>
+                            <li>Open <a href="http://localhost:8000" target="_blank" style="color: var(--accent-blue); text-decoration: underline; font-weight: 600;">http://localhost:8000</a> in your browser.</li>
+                        </ol>
+                    </div>` : '';
+
+                document.getElementById('detailPane').innerHTML = `
+                    <div style="padding: 24px; max-width: 600px;">
+                        <h3 style="color: var(--accent-red); margin-bottom: 8px;">Backend Server Not Reachable</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.92rem;">Could not connect to <code>${apiUrl}</code>: ${escapeHtml(err.message)}</p>
+                        ${helpText}
+                    </div>`;
+            }
+        }
+
+        function renderTaskList() {
+            const listEl = document.getElementById('taskList');
+            listEl.innerHTML = '';
+            allTasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = `task-item ${task.id === activeTaskId ? 'active' : ''}`;
+                li.id = `item-${task.id}`;
+                li.onclick = () => selectTask(task.id);
+
+                const diffClass = task.difficulty.includes('medium') ? 'badge-difficulty-medium-hard' : 'badge-difficulty-hard';
+
+                li.innerHTML = `
+                    <div class="task-item-title">${escapeHtml(task.title)}</div>
+                    <div class="task-item-badges">
+                        <span class="badge badge-category">${escapeHtml(task.category)}</span>
+                        <span class="badge ${diffClass}">${escapeHtml(task.difficulty)}</span>
+                    </div>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        function selectTask(taskId) {
+            activeTaskId = taskId;
+            document.querySelectorAll('.task-item').forEach(el => el.classList.remove('active'));
+            const activeEl = document.getElementById(`item-${taskId}`);
+            if (activeEl) activeEl.classList.add('active');
+
+            const task = allTasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const diffClass = task.difficulty.includes('medium') ? 'badge-difficulty-medium-hard' : 'badge-difficulty-hard';
+
+            const pane = document.getElementById('detailPane');
+            pane.innerHTML = `
+                <div class="detail-header">
+                    <div class="detail-id">task: ${escapeHtml(task.id)}</div>
+                    <h2 class="detail-title">${escapeHtml(task.title)}</h2>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <span class="badge badge-category">${escapeHtml(task.category)}</span>
+                        <span class="badge ${diffClass}">Difficulty: ${escapeHtml(task.difficulty)}</span>
+                        <span class="badge badge-timeout">Verifier: ${task.verifier_timeout_sec}s</span>
+                        <span class="badge badge-timeout">Agent: ${task.agent_timeout_sec}s</span>
+                    </div>
+                </div>
+
+                <div class="callout-box">
+                    <div class="callout-title">Technical Root-Cause & Systems Note</div>
+                    <div class="callout-content">${escapeHtml(task.difficulty_note)}</div>
+                </div>
+
+                <div class="section-block">
+                    <h3 class="section-heading">Task Statement</h3>
+                    <div class="content-body">${formatMarkdown(task.statement)}</div>
+                </div>
+
+                <div class="section-block">
+                    <h3 class="section-heading">Execution Environment</h3>
+                    <div class="content-body">${formatMarkdown(task.environment)}</div>
+                </div>
+
+                <div class="action-bar">
+                    <button class="btn-action" onclick="copyHarborCmd('${task.id}')">📋 Copy Harbor NOP Command</button>
+                    <button class="btn-action" onclick="copyOracleCmd('${task.id}')">⚡ Copy Harbor Oracle Command</button>
+                </div>
+            `;
+        }
+
+        function copyHarborCmd(id) {
+            const cmd = `harbor run -p ./tasks/${id} -a nop`;
+            navigator.clipboard.writeText(cmd);
+            alert(`Copied to clipboard:\n${cmd}`);
+        }
+
+        function copyOracleCmd(id) {
+            const cmd = `harbor run -p ./tasks/${id} -a oracle`;
+            navigator.clipboard.writeText(cmd);
+            alert(`Copied to clipboard:\n${cmd}`);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function formatMarkdown(text) {
+            if (!text) return '';
+            let html = escapeHtml(text);
+            // bold
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // inline code
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            // lists
+            html = html.replace(/^\s*-\s+(.*)$/gm, '<li>$1</li>');
+            html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+            // paragraphs
+            html = html.split('\n\n').map(p => {
+                if (p.startsWith('<ul>') || p.startsWith('<li>') || p.startsWith('<h')) return p;
+                return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+            }).join('');
+            return html;
+        }
+
+        fetchTasks();
+    </script>
+</body>
+</html>

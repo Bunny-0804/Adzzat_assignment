@@ -1,0 +1,71 @@
+diff --git a/src/inventory/inventory.cob b/src/inventory/inventory.cob
+index afc4cb2..79a1e76 100644
+--- a/src/inventory/inventory.cob
++++ b/src/inventory/inventory.cob
+@@ -249,37 +249,8 @@ LINKAGE SECTION.
+     01 LK-OUTPUT-SLOT           BINARY-LONG UNSIGNED.
+ 
+ PROCEDURE DIVISION USING LK-INVENTORY-LENGTH LK-INVENTORY LK-INPUT-COUNT LK-INPUT-START LK-OUTPUT-SLOT.
+-    INITIALIZE INITIAL-GRID
+-    IF LK-INPUT-COUNT = 4
+-        IF LK-SLOT-COUNT(LK-INPUT-START + 1) > 0
+-            MOVE LK-SLOT-ID(LK-INPUT-START + 1) TO INITIAL-GRID-ID(1)
+-        END-IF
+-        IF LK-SLOT-COUNT(LK-INPUT-START + 2) > 0
+-            MOVE LK-SLOT-ID(LK-INPUT-START + 2) TO INITIAL-GRID-ID(2)
+-        END-IF
+-        IF LK-SLOT-COUNT(LK-INPUT-START + 3) > 0
+-            MOVE LK-SLOT-ID(LK-INPUT-START + 3) TO INITIAL-GRID-ID(4)
+-        END-IF
+-        IF LK-SLOT-COUNT(LK-INPUT-START + 4) > 0
+-            MOVE LK-SLOT-ID(LK-INPUT-START + 4) TO INITIAL-GRID-ID(5)
+-        END-IF
+-    ELSE
+-        PERFORM VARYING SLOT FROM 1 BY 1 UNTIL SLOT > LK-INPUT-COUNT
+-            IF LK-SLOT-COUNT(LK-INPUT-START + SLOT) > 0
+-                MOVE LK-SLOT-ID(LK-INPUT-START + SLOT) TO INITIAL-GRID-ID(SLOT)
+-            END-IF
+-        END-PERFORM
+-    END-IF
+-
+-    MOVE INITIAL-GRID TO CRAFTING-GRID
+-    PERFORM MatchShapelessRecipes
+-
+-    MOVE INITIAL-GRID TO CRAFTING-GRID
+-    PERFORM MatchShapedRecipes
+-
+-    *> No matching recipe found - clear the output slot
++    *> Stripped crafting output calculation
+     MOVE 0 TO LK-SLOT-COUNT(LK-OUTPUT-SLOT + 1)
+-
+     GOBACK.
+ 
+ MatchShapedRecipes.
+diff --git a/src/inventory/window-crafting.cob b/src/inventory/window-crafting.cob
+index 96cd3c0..6290de5 100644
+--- a/src/inventory/window-crafting.cob
++++ b/src/inventory/window-crafting.cob
+@@ -120,9 +120,6 @@ PROCEDURE DIVISION.
+ 
+             WHEN 1 THRU 9 *> crafting input
+                 MOVE LK-SLOT TO PLAYER-WINDOW-SLOT(LK-PLAYER, LK-INDEX + 1)
+-                CALL "Inventory-UpdateCraftingOutput" USING WINDOW-INVENTORY-LENGTH PLAYER-WINDOW-SLOTS(LK-PLAYER)
+-                    CRAFTING-GRID-SIZE CRAFTING-GRID-START CRAFTING-OUTPUT-SLOT
+-                MOVE 1 TO LK-SYNC-REQUIRED
+ 
+             WHEN 10 THRU 45 *> player inventory
+                 MOVE LK-SLOT TO PLAYER-INVENTORY-SLOT(LK-PLAYER, LK-INDEX)
+diff --git a/src/inventory/window-player.cob b/src/inventory/window-player.cob
+index 15b6261..a529724 100644
+--- a/src/inventory/window-player.cob
++++ b/src/inventory/window-player.cob
+@@ -118,9 +118,6 @@ PROCEDURE DIVISION.
+ 
+             WHEN 1 THRU 4 *> crafting input
+                  MOVE LK-SLOT TO PLAYER-INVENTORY-SLOT(LK-PLAYER, LK-INDEX + 1)
+-                CALL "Inventory-UpdateCraftingOutput" USING PLAYER-INVENTORY-LENGTH PLAYER-INVENTORY(LK-PLAYER)
+-                    CRAFTING-GRID-SIZE CRAFTING-GRID-START CRAFTING-OUTPUT-SLOT
+-                MOVE 1 TO LK-SYNC-REQUIRED
+ 
+             WHEN 5 THRU 45 *> armor, inventory, offhand
+                 MOVE LK-SLOT TO PLAYER-INVENTORY-SLOT(LK-PLAYER, LK-INDEX + 1)

@@ -1,0 +1,20 @@
+version = "1.0"
+
+[metadata]
+id = "survival-crafting"
+title = "Implement Survival Crafting Support"
+category = "outcome-driven"
+difficulty = "hard"
+difficulty_note = "Hard (Outcome-driven): Requires coordinating datapack JSON recipe ingestion, tag lookup resolution, 2D sub-grid offset translation and horizontal mirroring in fixed-size COBOL tables, and stateful inventory window slot updates without corrupting nested loop state in WORKING-STORAGE."
+
+[verifier]
+timeout_sec = 120.0
+
+[agent]
+timeout_sec = 600.0
+
+[environment]
+build_timeout_sec = 300.0
+cpus = 2
+memory_mb = 4096
+storage_mb = 10240

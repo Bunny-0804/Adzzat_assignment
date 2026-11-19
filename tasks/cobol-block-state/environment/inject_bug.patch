@@ -1,0 +1,54 @@
+diff --git a/src/blocks.cob b/src/blocks.cob
+index a59ac6b..0b99e71 100644
+--- a/src/blocks.cob
++++ b/src/blocks.cob
+@@ -539,16 +539,17 @@ PROGRAM-ID. Blocks-Description-GetValue.
+ DATA DIVISION.
+ WORKING-STORAGE SECTION.
+     01 PROPERTY-INDEX           BINARY-LONG UNSIGNED.
++    01 SCRATCH-VALUE            PIC X(64).
+ LINKAGE SECTION.
+     COPY DD-BLOCK-STATE REPLACING LEADING ==PREFIX== BY ==LK-STATE==.
+     01 LK-PROPERTY-NAME         PIC X ANY LENGTH.
+     01 LK-PROPERTY-VALUE        PIC X ANY LENGTH.
+ 
+ PROCEDURE DIVISION USING LK-STATE-DESCRIPTION LK-PROPERTY-NAME LK-PROPERTY-VALUE.
+-    MOVE SPACES TO LK-PROPERTY-VALUE
+     PERFORM VARYING PROPERTY-INDEX FROM 1 BY 1 UNTIL PROPERTY-INDEX > LK-STATE-PROPERTY-COUNT
+         IF LK-PROPERTY-NAME = LK-STATE-PROPERTY-NAME(PROPERTY-INDEX)
+-            MOVE LK-STATE-PROPERTY-VALUE(PROPERTY-INDEX) TO LK-PROPERTY-VALUE
++            STRING FUNCTION TRIM(LK-STATE-PROPERTY-VALUE(PROPERTY-INDEX)) INTO SCRATCH-VALUE
++            MOVE SCRATCH-VALUE TO LK-PROPERTY-VALUE
+             EXIT PERFORM
+         END-IF
+     END-PERFORM
+diff --git a/src/blocks/door.cob b/src/blocks/door.cob
+index 475f149..0f83b06 100644
+--- a/src/blocks/door.cob
++++ b/src/blocks/door.cob
+@@ -151,13 +151,12 @@ PROCEDURE DIVISION.
+ 
+         *> Find the other half
+         CALL "Blocks-Description-GetValue" USING CLICKED-DESCRIPTION "half" HALF-VALUE-CLICKED
+-        MOVE LK-POSITION TO BLOCK-POSITION
+         IF HALF-VALUE-CLICKED = "upper"
+-            SUBTRACT 1 FROM BLOCK-Y
++            SUBTRACT 1 FROM LK-POSITION-Y
+         ELSE
+-            ADD 1 TO BLOCK-Y
++            ADD 1 TO LK-POSITION-Y
+         END-IF
+-        CALL "World-GetBlock" USING BLOCK-POSITION BLOCK-STATE
++        CALL "World-GetBlock" USING LK-POSITION BLOCK-STATE
+         CALL "Blocks-ToDescription" USING BLOCK-STATE OTHER-HALF-DESCRIPTION
+ 
+         *> Check if the block matches (normally there shouldn't be single-block doors, but just in case)
+@@ -172,7 +171,7 @@ PROCEDURE DIVISION.
+         *> Toggle the "open" property for the other half
+         CALL "Blocks-Description-SetValue" USING OTHER-HALF-DESCRIPTION "open" OPEN-VALUE
+         CALL "Blocks-FromDescription" USING OTHER-HALF-DESCRIPTION BLOCK-STATE
+-        CALL "World-SetBlock" USING PLAYER-CLIENT(LK-PLAYER) BLOCK-POSITION BLOCK-STATE
++        CALL "World-SetBlock" USING PLAYER-CLIENT(LK-PLAYER) LK-POSITION BLOCK-STATE
+ 
+         GOBACK.
+ 
