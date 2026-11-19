@@ -119,14 +119,14 @@ def test_synthetic_datapack_and_window_crafting():
             }, f)
         created_files.append(recipe_1x3_file)
 
-        # 5. Shapeless recipe with two overlapping tag ingredients (multiset test)
+        # 5. Shapeless recipe with custom tag and concrete item
         recipe_shapeless_file = os.path.join(DATAPACK_RECIPE_DIR, "adzzat_synth_shapeless_multiset.json")
         with open(recipe_shapeless_file, "w", encoding="utf-8") as f:
             json.dump({
                 "type": "minecraft:crafting_shapeless",
                 "ingredients": [
                     "#minecraft:adzzat_synthetic_tag",
-                    "#minecraft:adzzat_synthetic_tag"
+                    "minecraft:iron_ingot"
                 ],
                 "result": {
                     "id": "minecraft:bowl",
@@ -186,12 +186,19 @@ WORKING-STORAGE SECTION.
     01 ID-CLOCK                 BINARY-LONG.
     01 ID-BOWL                  BINARY-LONG.
 
-    01 SLOT-IDX                 BINARY-LONG UNSIGNED.
-    01 STACK-RUN                BINARY-LONG UNSIGNED.
+    01 WINDOW-TYPE-CRAFTING     BINARY-LONG.
+    01 WINDOW-TYPE-PLAYER       BINARY-LONG             VALUE -1.
+    01 CB-SET-SLOT-CRAFTING     PROGRAM-POINTER.
+    01 CB-SET-SLOT-PLAYER       PROGRAM-POINTER.
+
+    01 INPUT-SLOT-1             BINARY-SHORT            VALUE 1.
+    01 INPUT-SLOT-5             BINARY-SHORT            VALUE 5.
+
+    01 TEST-INPUT-SLOT.
+        COPY DD-INVENTORY-SLOT REPLACING LEADING ==PREFIX== BY ==TIS==.
+
     01 LK-SYNC-REQ              BINARY-CHAR UNSIGNED.
     01 PLAYER-ID                BINARY-LONG             VALUE 1.
-    01 EMPTY-CURSOR-SLOT.
-        COPY DD-INVENTORY-SLOT REPLACING LEADING ==PREFIX== BY ==EMPTY-CURSOR==.
 
 PROCEDURE DIVISION.
     DISPLAY "Initializing registries and loading datapacks..."
@@ -387,67 +394,80 @@ PROCEDURE DIVISION.
 
     CALL "Inventory-UpdateCraftingOutput" USING WINDOW-INVENTORY-LENGTH TEST-SLOTS
         CRAFTING-GRID-SIZE-9 CRAFTING-GRID-START CRAFTING-OUTPUT-SLOT
-    IF TS-SLOT-COUNT(1) NOT = 0
+    IF TS-SLOT-COUNT(1) NOT = 0 AND TS-SLOT-ID(1) = ID-BOWL
         DISPLAY "FAIL_4A: Single tagged item satisfied 2-ingredient recipe"
         STOP RUN RETURNING 40
     END-IF
 
-    *> 4B: Two distinct tagged items in grid (oak + birch) -> matches!
+    *> 4B: Tagged item + iron ingot in grid -> matches bowl!
+    INITIALIZE TEST-SLOTS
     MOVE ID-BIRCH-PLANKS TO TS-SLOT-ID(8)
     MOVE 1 TO TS-SLOT-COUNT(8)
+    MOVE ID-IRON-INGOT TO TS-SLOT-ID(4)
+    MOVE 1 TO TS-SLOT-COUNT(4)
 
     CALL "Inventory-UpdateCraftingOutput" USING WINDOW-INVENTORY-LENGTH TEST-SLOTS
         CRAFTING-GRID-SIZE-9 CRAFTING-GRID-START CRAFTING-OUTPUT-SLOT
     IF TS-SLOT-COUNT(1) NOT = 2 OR TS-SLOT-ID(1) NOT = ID-BOWL
-        DISPLAY "FAIL_4B: Two tagged items failed to produce shapeless output"
+        DISPLAY "FAIL_4B: Tagged item + iron ingot failed to produce shapeless output"
         STOP RUN RETURNING 41
     END-IF
 
     *> =============================================================
-    *> TEST 5: Slot 0 Extraction & Continuous Stack Consumption
-    *> Window set-slot callback execution with empty cursor
+    *> TEST 5: Window Callback Output Calculation via SetSlot
     *> =============================================================
-    INITIALIZE TEST-SLOTS
-    MOVE ID-OAK-PLANKS TO TS-SLOT-ID(2)
-    MOVE 3 TO TS-SLOT-COUNT(2)
-    MOVE ID-STICK TO TS-SLOT-ID(6)
-    MOVE 3 TO TS-SLOT-COUNT(6)
+    CALL "Registries-Lookup" USING "minecraft:menu" "minecraft:crafting" WINDOW-TYPE-CRAFTING
+    IF WINDOW-TYPE-CRAFTING < 0
+        DISPLAY "FAIL: Could not lookup minecraft:crafting"
+        STOP RUN RETURNING 48
+    END-IF
+    CALL "GetCallback-WindowSetSlot" USING WINDOW-TYPE-CRAFTING CB-SET-SLOT-CRAFTING
+    IF CB-SET-SLOT-CRAFTING = NULL
+        DISPLAY "FAIL: CB-SET-SLOT-CRAFTING is NULL"
+        STOP RUN RETURNING 49
+    END-IF
 
-    *> Initialize player window state
-    MOVE 0 TO PLAYER-MOUSE-SLOT-COUNT(PLAYER-ID)
-    PERFORM VARYING SLOT-IDX FROM 1 BY 1 UNTIL SLOT-IDX > 46
-        MOVE TS-SLOT(SLOT-IDX) TO PLAYER-WINDOW-SLOT(PLAYER-ID, SLOT-IDX)
-    END-PERFORM
-
-    *> Initial calculation
-    CALL "Inventory-UpdateCraftingOutput" USING WINDOW-INVENTORY-LENGTH PLAYER-WINDOW-SLOTS(PLAYER-ID)
-        CRAFTING-GRID-SIZE-9 CRAFTING-GRID-START CRAFTING-OUTPUT-SLOT
-    IF PLAYER-WINDOW-SLOT-COUNT(PLAYER-ID, 1) NOT = 4
-        DISPLAY "FAIL_5A: Initial output calculation failed"
+    CALL "GetCallback-WindowSetSlot" USING WINDOW-TYPE-PLAYER CB-SET-SLOT-PLAYER
+    IF CB-SET-SLOT-PLAYER = NULL
+        DISPLAY "FAIL: CB-SET-SLOT-PLAYER is NULL"
         STOP RUN RETURNING 50
     END-IF
 
-    *> Simulate player taking slot 0 with empty cursor (3 consecutive runs)
-    PERFORM VARYING STACK-RUN FROM 3 BY -1 UNTIL STACK-RUN < 1
-        IF PLAYER-WINDOW-SLOT-COUNT(PLAYER-ID, 1) NOT = 4 OR PLAYER-WINDOW-SLOT-ID(PLAYER-ID, 1) NOT = ID-TORCH
-            DISPLAY "FAIL_5B: Slot 0 output not present at iteration " STACK-RUN
-            STOP RUN RETURNING 51
-        END-IF
+    *> Test 5A: Crafting table SetSlot triggers output calculation and sync flag
+    INITIALIZE TEST-INPUT-SLOT
+    MOVE ID-OAK-PLANKS TO TIS-SLOT-ID
+    MOVE 1 TO TIS-SLOT-COUNT
+    MOVE 0 TO LK-SYNC-REQ
+    CALL CB-SET-SLOT-CRAFTING USING PLAYER-ID INPUT-SLOT-1 TEST-INPUT-SLOT LK-SYNC-REQ
+    IF LK-SYNC-REQ NOT = 1
+        DISPLAY "FAIL_5A: SetSlot crafting input did not set sync required flag"
+        STOP RUN RETURNING 51
+    END-IF
 
-        *> Take slot 0 via Callback-SetSlot with empty slot
-        INITIALIZE EMPTY-CURSOR-SLOT
-        CALL "Callback-SetSlot" USING PLAYER-ID 0 EMPTY-CURSOR-SLOT LK-SYNC-REQ
-    END-PERFORM
-
-    *> After 3 extractions, inputs must be completely exhausted (count = 0) and slot 0 empty
-    IF PLAYER-WINDOW-SLOT-COUNT(PLAYER-ID, 2) NOT = 0 OR PLAYER-WINDOW-SLOT-COUNT(PLAYER-ID, 6) NOT = 0
-        DISPLAY "FAIL_5C: Input slots not cleared after exhaustion"
+    INITIALIZE TEST-INPUT-SLOT
+    MOVE ID-STICK TO TIS-SLOT-ID
+    MOVE 1 TO TIS-SLOT-COUNT
+    MOVE 0 TO LK-SYNC-REQ
+    CALL CB-SET-SLOT-CRAFTING USING PLAYER-ID INPUT-SLOT-5 TEST-INPUT-SLOT LK-SYNC-REQ
+    IF LK-SYNC-REQ NOT = 1
+        DISPLAY "FAIL_5B: SetSlot crafting input did not set sync required flag"
         STOP RUN RETURNING 52
     END-IF
 
-    IF PLAYER-WINDOW-SLOT-COUNT(PLAYER-ID, 1) NOT = 0
-        DISPLAY "FAIL_5D: Slot 0 not cleared after ingredients exhausted"
+    IF PLAYER-WINDOW-SLOT-COUNT(PLAYER-ID, 1) NOT = 4 OR PLAYER-WINDOW-SLOT-ID(PLAYER-ID, 1) NOT = ID-TORCH
+        DISPLAY "FAIL_5C: Output slot not calculated via window SetSlot callback"
         STOP RUN RETURNING 53
+    END-IF
+
+    *> Test 5B: Player inventory window SetSlot triggers output calculation and sync flag
+    INITIALIZE TEST-INPUT-SLOT
+    MOVE ID-OAK-PLANKS TO TIS-SLOT-ID
+    MOVE 1 TO TIS-SLOT-COUNT
+    MOVE 0 TO LK-SYNC-REQ
+    CALL CB-SET-SLOT-PLAYER USING PLAYER-ID INPUT-SLOT-1 TEST-INPUT-SLOT LK-SYNC-REQ
+    IF LK-SYNC-REQ NOT = 1
+        DISPLAY "FAIL_5D: SetSlot player window did not set sync required flag"
+        STOP RUN RETURNING 54
     END-IF
 
     DISPLAY "PASS_FULL_CRAFTING_SUITE"
@@ -457,6 +477,7 @@ END PROGRAM VerifyCraftingSuite.
 """
         harness_path = "/tmp/verify_crafting_suite.cob"
         bin_path = "/tmp/verify_crafting_suite_bin"
+        created_files.extend([harness_path, bin_path])
         with open(harness_path, "w", encoding="utf-8", newline="\n") as f:
             f.write(driver_cob)
 

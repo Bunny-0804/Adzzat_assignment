@@ -6,7 +6,7 @@ mkdir -p /logs/verifier
 cd /app
 
 # Force clean rebuild so copybook (.cpy) edits always recompile dependent .o objects
-make clean && make > /logs/verifier/build.log 2>&1
+find /app -name "*.o" -delete && make > /logs/verifier/build.log 2>&1
 if [ $? -ne 0 ]; then
   echo 0 > /logs/verifier/reward.txt
   exit 0

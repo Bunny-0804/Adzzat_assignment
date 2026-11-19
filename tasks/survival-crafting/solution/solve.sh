@@ -66,46 +66,17 @@ if os.path.exists(wcraft_file):
     stripped_wcraft = """            WHEN 1 THRU 9 *> crafting input
                 MOVE LK-SLOT TO PLAYER-WINDOW-SLOT(LK-PLAYER, LK-INDEX + 1)"""
 
-    fixed_wcraft = """            WHEN 0 *> crafting output
-                IF PLAYER-WINDOW-SLOT-COUNT(LK-PLAYER, 1) > 0 AND LK-SLOT-COUNT = 0
-                    MOVE LK-SLOT TO PLAYER-WINDOW-SLOT(LK-PLAYER, 1)
-                    PERFORM VARYING SLOT FROM 1 BY 1 UNTIL SLOT > 9
-                        IF PLAYER-WINDOW-SLOT-COUNT(LK-PLAYER, SLOT + 1) > 0
-                            SUBTRACT 1 FROM PLAYER-WINDOW-SLOT-COUNT(LK-PLAYER, SLOT + 1)
-                        END-IF
-                    END-PERFORM
-                    CALL "Inventory-UpdateCraftingOutput" USING WINDOW-INVENTORY-LENGTH PLAYER-WINDOW-SLOTS(LK-PLAYER)
-                        CRAFTING-GRID-SIZE CRAFTING-GRID-START CRAFTING-OUTPUT-SLOT
-                    MOVE 1 TO LK-SYNC-REQUIRED
-                ELSE
-                    MOVE LK-SLOT TO PLAYER-WINDOW-SLOT(LK-PLAYER, LK-INDEX + 1)
-                END-IF
-
-            WHEN 1 THRU 9 *> crafting input
+    restored_wcraft = """            WHEN 1 THRU 9 *> crafting input
                 MOVE LK-SLOT TO PLAYER-WINDOW-SLOT(LK-PLAYER, LK-INDEX + 1)
                 CALL "Inventory-UpdateCraftingOutput" USING WINDOW-INVENTORY-LENGTH PLAYER-WINDOW-SLOTS(LK-PLAYER)
                     CRAFTING-GRID-SIZE CRAFTING-GRID-START CRAFTING-OUTPUT-SLOT
                 MOVE 1 TO LK-SYNC-REQUIRED"""
 
-    # Replace both WHEN 0 and WHEN 1 THRU 9
-    old_block = """            WHEN 0 *> crafting output
-                MOVE LK-SLOT TO PLAYER-WINDOW-SLOT(LK-PLAYER, LK-INDEX + 1)
-
-            WHEN 1 THRU 9 *> crafting input
-                MOVE LK-SLOT TO PLAYER-WINDOW-SLOT(LK-PLAYER, LK-INDEX + 1)"""
-
-    if old_block in content:
-        content = content.replace(old_block, fixed_wcraft)
-    elif stripped_wcraft in content:
-        content = content.replace(stripped_wcraft, """            WHEN 1 THRU 9 *> crafting input
-                MOVE LK-SLOT TO PLAYER-WINDOW-SLOT(LK-PLAYER, LK-INDEX + 1)
-                CALL "Inventory-UpdateCraftingOutput" USING WINDOW-INVENTORY-LENGTH PLAYER-WINDOW-SLOTS(LK-PLAYER)
-                    CRAFTING-GRID-SIZE CRAFTING-GRID-START CRAFTING-OUTPUT-SLOT
-                MOVE 1 TO LK-SYNC-REQUIRED""")
-
-    with open(wcraft_file, "w", encoding="utf-8", newline="\n") as f:
-        f.write(content)
-    print("Restored src/inventory/window-crafting.cob")
+    if stripped_wcraft in content:
+        content = content.replace(stripped_wcraft, restored_wcraft)
+        with open(wcraft_file, "w", encoding="utf-8", newline="\n") as f:
+            f.write(content)
+        print("Restored src/inventory/window-crafting.cob")
 
 # 3. Restore src/inventory/window-player.cob
 wplayer_file = "src/inventory/window-player.cob"
@@ -116,51 +87,17 @@ if os.path.exists(wplayer_file):
     stripped_wplayer = """            WHEN 1 THRU 4 *> crafting input
                  MOVE LK-SLOT TO PLAYER-INVENTORY-SLOT(LK-PLAYER, LK-INDEX + 1)"""
 
-    fixed_wplayer = """            WHEN 0 *> crafting output
-                IF PLAYER-INVENTORY-SLOT-COUNT(LK-PLAYER, 1) > 0 AND LK-SLOT-COUNT = 0
-                    MOVE LK-SLOT TO PLAYER-INVENTORY-SLOT(LK-PLAYER, 1)
-                    PERFORM VARYING SLOT FROM 1 BY 1 UNTIL SLOT > 4
-                        IF PLAYER-INVENTORY-SLOT-COUNT(LK-PLAYER, SLOT + 1) > 0
-                            SUBTRACT 1 FROM PLAYER-INVENTORY-SLOT-COUNT(LK-PLAYER, SLOT + 1)
-                        END-IF
-                    END-PERFORM
-                    CALL "Inventory-UpdateCraftingOutput" USING PLAYER-INVENTORY-LENGTH PLAYER-INVENTORY(LK-PLAYER)
-                        CRAFTING-GRID-SIZE CRAFTING-GRID-START CRAFTING-OUTPUT-SLOT
-                    MOVE 1 TO LK-SYNC-REQUIRED
-                ELSE
-                    MOVE LK-SLOT TO PLAYER-INVENTORY-SLOT(LK-PLAYER, LK-INDEX + 1)
-                END-IF
-
-            WHEN 1 THRU 4 *> crafting input
-                MOVE LK-SLOT TO PLAYER-INVENTORY-SLOT(LK-PLAYER, LK-INDEX + 1)
+    restored_wplayer = """            WHEN 1 THRU 4 *> crafting input
+                 MOVE LK-SLOT TO PLAYER-INVENTORY-SLOT(LK-PLAYER, LK-INDEX + 1)
                 CALL "Inventory-UpdateCraftingOutput" USING PLAYER-INVENTORY-LENGTH PLAYER-INVENTORY(LK-PLAYER)
                     CRAFTING-GRID-SIZE CRAFTING-GRID-START CRAFTING-OUTPUT-SLOT
                 MOVE 1 TO LK-SYNC-REQUIRED"""
 
-    old_player_block = """            WHEN 0 *> crafting output
-                 MOVE LK-SLOT TO PLAYER-INVENTORY-SLOT(LK-PLAYER, LK-INDEX + 1)
-
-            WHEN 1 THRU 4 *> crafting input
-                 MOVE LK-SLOT TO PLAYER-INVENTORY-SLOT(LK-PLAYER, LK-INDEX + 1)"""
-
-    if old_player_block in content:
-        content = content.replace(old_player_block, fixed_wplayer)
-    elif stripped_wplayer in content:
-        content = content.replace(stripped_wplayer, """            WHEN 1 THRU 4 *> crafting input
-                MOVE LK-SLOT TO PLAYER-INVENTORY-SLOT(LK-PLAYER, LK-INDEX + 1)
-                CALL "Inventory-UpdateCraftingOutput" USING PLAYER-INVENTORY-LENGTH PLAYER-INVENTORY(LK-PLAYER)
-                    CRAFTING-GRID-SIZE CRAFTING-GRID-START CRAFTING-OUTPUT-SLOT
-                MOVE 1 TO LK-SYNC-REQUIRED""")
-
-    # Also ensure UpdateCrafting in window-player uses PLAYER-INVENTORY(LK-PLAYER)
-    content = content.replace(
-        'USING WINDOW-INVENTORY-LENGTH PLAYER-WINDOW-SLOTS(LK-PLAYER)',
-        'USING PLAYER-INVENTORY-LENGTH PLAYER-INVENTORY(LK-PLAYER)'
-    )
-
-    with open(wplayer_file, "w", encoding="utf-8", newline="\n") as f:
-        f.write(content)
-    print("Restored src/inventory/window-player.cob")
+    if stripped_wplayer in content:
+        content = content.replace(stripped_wplayer, restored_wplayer)
+        with open(wplayer_file, "w", encoding="utf-8", newline="\n") as f:
+            f.write(content)
+        print("Restored src/inventory/window-player.cob")
 EOF
 
 make

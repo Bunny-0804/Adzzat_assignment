@@ -61,16 +61,38 @@ WORKING-STORAGE SECTION.
     01 SAVED-Y                  BINARY-LONG.
     01 SAVED-Z                  BINARY-LONG.
 
+    01 FILE-BLOCKS              PIC X(255)              VALUE "data/generated/reports/blocks.json".
+    01 DATA-BUFFER              PIC X(10000000).
+    01 DATA-BUFFER-LEN          BINARY-LONG UNSIGNED.
+    01 DATA-FAILURE             BINARY-CHAR UNSIGNED.
+
     01 INTERACT-PTR             PROGRAM-POINTER.
-    01 STATE-ID                 BINARY-LONG             VALUE 1.
+    01 DOOR-BLOCK-ID            BINARY-LONG.
+    01 DOOR-MIN-STATE           BINARY-LONG.
+    01 DOOR-MAX-STATE           BINARY-LONG.
 
     COPY DD-BLOCK-STATE REPLACING LEADING ==PREFIX== BY ==TEST-STATE==.
     01 RETRIEVED-VALUE          PIC X(64).
 
 PROCEDURE DIVISION.
     CALL "Callbacks-Init"
+    CALL "Generated-Registries"
+    CALL "Files-ReadAll" USING FILE-BLOCKS DATA-BUFFER DATA-BUFFER-LEN DATA-FAILURE
+    IF DATA-FAILURE NOT = 0
+        DISPLAY "ERR: Files-ReadAll failed on blocks.json"
+        STOP RUN RETURNING 3
+    END-IF
+    CALL "Blocks-Parse" USING DATA-BUFFER DATA-BUFFER-LEN DATA-FAILURE
+    IF DATA-FAILURE NOT = 0
+        DISPLAY "ERR: Blocks-Parse failed"
+        STOP RUN RETURNING 4
+    END-IF
+
     CALL "RegisterBlock-Door"
-    CALL "GetCallback-BlockInteract" USING STATE-ID INTERACT-PTR
+
+    CALL "Registries-Lookup" USING "minecraft:block" "minecraft:oak_door" DOOR-BLOCK-ID
+    CALL "Blocks-GetStateIds" USING DOOR-BLOCK-ID DOOR-MIN-STATE DOOR-MAX-STATE
+    CALL "GetCallback-BlockInteract" USING DOOR-MIN-STATE INTERACT-PTR
 
     IF INTERACT-PTR = NULL
         SET INTERACT-PTR TO ENTRY "Callback-Interact"
@@ -203,18 +225,26 @@ END PROGRAM VerifyInterleavedDriver.
 """
     harness_path = "/tmp/verify_interleaved.cob"
     bin_path = "/tmp/verify_interleaved_bin"
-    with open(harness_path, "w", encoding="utf-8", newline="\n") as f:
-        f.write(driver_cob)
+    try:
+        with open(harness_path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(driver_cob)
 
-    cobc_cmd = ["cobc", "-x", "-free", "-DGCVERSION=32"] + get_cobc_opts() + [
-        "-lstdc++", "-lz", "-o", bin_path, harness_path
-    ] + get_all_objects()
-    compile_res = subprocess.run(cobc_cmd, cwd=APP_DIR, capture_output=True, text=True)
-    assert compile_res.returncode == 0, f"Compilation of interleaved verification driver failed:\n{compile_res.stderr}"
+        cobc_cmd = ["cobc", "-x", "-free", "-DGCVERSION=32"] + get_cobc_opts() + [
+            "-lstdc++", "-lz", "-o", bin_path, harness_path
+        ] + get_all_objects()
+        compile_res = subprocess.run(cobc_cmd, cwd=APP_DIR, capture_output=True, text=True)
+        assert compile_res.returncode == 0, f"Compilation of interleaved verification driver failed:\n{compile_res.stderr}"
 
-    run_res = subprocess.run([bin_path], cwd=APP_DIR, capture_output=True, text=True)
-    assert run_res.returncode == 0, f"Interleaved verification check failed:\n{run_res.stdout}\n{run_res.stderr}"
-    assert "PASS_INTERLEAVED_HARNESS" in run_res.stdout
+        run_res = subprocess.run([bin_path], cwd=APP_DIR, capture_output=True, text=True)
+        assert run_res.returncode == 0, f"Interleaved verification check failed:\n{run_res.stdout}\n{run_res.stderr}"
+        assert "PASS_INTERLEAVED_HARNESS" in run_res.stdout
+    finally:
+        for p in [harness_path, bin_path]:
+            if os.path.exists(p):
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
 
 def test_structural_git_diff_check():
     """Ensure fixes were applied to core block state modules without touching upstream packet handlers."""
