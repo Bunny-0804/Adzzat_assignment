@@ -197,6 +197,12 @@
             letter-spacing: -0.5px;
         }
 
+        .task-header-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
         .badge {
             display: inline-block;
             font-size: 0.75rem;
@@ -252,6 +258,7 @@
             font-size: 0.92rem;
             line-height: 1.6;
             color: var(--text-primary);
+            white-space: pre-wrap;
         }
 
         .section-block {
@@ -268,33 +275,19 @@
         }
 
         .content-body {
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             line-height: 1.68;
             color: var(--text-secondary);
+            font-family: var(--font-family);
         }
 
-        .content-body p {
-            margin-bottom: 14px;
-        }
-
-        .content-body ul {
-            margin-left: 24px;
-            margin-bottom: 16px;
-        }
-
-        .content-body li {
-            margin-bottom: 6px;
-        }
-
-        .code-box {
+        .pre-wrap {
+            white-space: pre-wrap;
             background-color: var(--bg-secondary);
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            padding: 14px 18px;
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-            margin: 14px 0;
-            overflow-x: auto;
+            padding: 16px;
+            font-family: var(--font-family);
             color: var(--text-primary);
         }
 
@@ -336,7 +329,7 @@
         <aside class="sidebar">
             <div class="sidebar-header">Benchmark Tasks</div>
             <ul class="task-list" id="taskList">
-                <!-- Dynamically populated -->
+                <!-- Dynamically populated via safe DOM creation -->
             </ul>
         </aside>
 
@@ -376,47 +369,98 @@
                     selectTask(allTasks[0].id);
                 }
             } catch (err) {
-                const helpText = isFileProtocol ? `
-                    <div style="margin-top: 16px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 18px; color: var(--text-primary); text-align: left;">
-                        <h4 style="margin-bottom: 8px; color: var(--accent-blue);">How to run the showcase server:</h4>
-                        <p style="margin-bottom: 10px; color: var(--text-secondary); font-size: 0.9rem;">
-                            Direct file opening (<code>file:///</code>) cannot serve tasks dynamically without the Python process running.
-                        </p>
-                        <ol style="margin-left: 20px; line-height: 1.8; font-size: 0.9rem;">
-                            <li>Start the backend process in your terminal:<br>
-                                <code style="background: var(--bg-tertiary); padding: 4px 8px; border-radius: 4px; display: inline-block; margin: 4px 0;">python adzzat-cobolcraft-tasks/web/server.py</code>
-                            </li>
-                            <li>Open <a href="http://localhost:8000" target="_blank" style="color: var(--accent-blue); text-decoration: underline; font-weight: 600;">http://localhost:8000</a> in your browser.</li>
-                        </ol>
-                    </div>` : '';
+                const pane = document.getElementById('detailPane');
+                pane.replaceChildren();
 
-                document.getElementById('detailPane').innerHTML = `
-                    <div style="padding: 24px; max-width: 600px;">
-                        <h3 style="color: var(--accent-red); margin-bottom: 8px;">Backend Server Not Reachable</h3>
-                        <p style="color: var(--text-secondary); font-size: 0.92rem;">Could not connect to <code>${apiUrl}</code>: ${escapeHtml(err.message)}</p>
-                        ${helpText}
-                    </div>`;
+                const errBox = document.createElement('div');
+                errBox.style.padding = '24px';
+                errBox.style.maxWidth = '600px';
+
+                const errTitle = document.createElement('h3');
+                errTitle.style.color = 'var(--accent-red)';
+                errTitle.style.marginBottom = '8px';
+                errTitle.textContent = 'Backend Server Not Reachable';
+
+                const errMsg = document.createElement('p');
+                errMsg.style.color = 'var(--text-secondary)';
+                errMsg.style.fontSize = '0.92rem';
+                errMsg.textContent = `Could not connect to ${apiUrl}: ${err.message}`;
+
+                errBox.append(errTitle, errMsg);
+
+                if (isFileProtocol) {
+                    const helpBox = document.createElement('div');
+                    helpBox.style.marginTop = '16px';
+                    helpBox.style.background = 'var(--bg-secondary)';
+                    helpBox.style.border = '1px solid var(--border-color)';
+                    helpBox.style.borderRadius = '8px';
+                    helpBox.style.padding = '18px';
+                    helpBox.style.color = 'var(--text-primary)';
+
+                    const helpTitle = document.createElement('h4');
+                    helpTitle.style.marginBottom = '8px';
+                    helpTitle.style.color = 'var(--accent-blue)';
+                    helpTitle.textContent = 'How to start the backend showcase server:';
+
+                    const helpP = document.createElement('p');
+                    helpP.style.marginBottom = '10px';
+                    helpP.style.color = 'var(--text-secondary)';
+                    helpP.style.fontSize = '0.9rem';
+                    helpP.textContent = 'Opening directly via file:/// cannot serve tasks dynamically without the Python process running.';
+
+                    const ol = document.createElement('ol');
+                    ol.style.marginLeft = '20px';
+                    ol.style.lineHeight = '1.8';
+                    ol.style.fontSize = '0.9rem';
+
+                    const li1 = document.createElement('li');
+                    li1.textContent = 'Run command in terminal: python adzzat-cobolcraft-tasks/web/server.py';
+
+                    const li2 = document.createElement('li');
+                    const link = document.createElement('a');
+                    link.href = 'http://localhost:8000';
+                    link.target = '_blank';
+                    link.style.color = 'var(--accent-blue)';
+                    link.style.textDecoration = 'underline';
+                    link.textContent = 'http://localhost:8000';
+                    li2.append('Open ', link, ' in your browser');
+
+                    ol.append(li1, li2);
+                    helpBox.append(helpTitle, helpP, ol);
+                    errBox.append(helpBox);
+                }
+
+                pane.append(errBox);
             }
         }
 
         function renderTaskList() {
             const listEl = document.getElementById('taskList');
-            listEl.innerHTML = '';
+            listEl.replaceChildren();
+
             allTasks.forEach(task => {
                 const li = document.createElement('li');
                 li.className = `task-item ${task.id === activeTaskId ? 'active' : ''}`;
                 li.id = `item-${task.id}`;
                 li.onclick = () => selectTask(task.id);
 
-                const diffClass = task.difficulty.includes('medium') ? 'badge-difficulty-medium-hard' : 'badge-difficulty-hard';
+                const titleEl = document.createElement('div');
+                titleEl.className = 'task-item-title';
+                titleEl.textContent = task.title;
 
-                li.innerHTML = `
-                    <div class="task-item-title">${escapeHtml(task.title)}</div>
-                    <div class="task-item-badges">
-                        <span class="badge badge-category">${escapeHtml(task.category)}</span>
-                        <span class="badge ${diffClass}">${escapeHtml(task.difficulty)}</span>
-                    </div>
-                `;
+                const badgesEl = document.createElement('div');
+                badgesEl.className = 'task-item-badges';
+
+                const catBadge = document.createElement('span');
+                catBadge.className = 'badge badge-category';
+                catBadge.textContent = task.category;
+
+                const diffBadge = document.createElement('span');
+                diffBadge.className = `badge ${task.difficulty.includes('medium') ? 'badge-difficulty-medium-hard' : 'badge-difficulty-hard'}`;
+                diffBadge.textContent = task.difficulty;
+
+                badgesEl.append(catBadge, diffBadge);
+                li.append(titleEl, badgesEl);
                 listEl.appendChild(li);
             });
         }
@@ -430,41 +474,102 @@
             const task = allTasks.find(t => t.id === taskId);
             if (!task) return;
 
-            const diffClass = task.difficulty.includes('medium') ? 'badge-difficulty-medium-hard' : 'badge-difficulty-hard';
-
             const pane = document.getElementById('detailPane');
-            pane.innerHTML = `
-                <div class="detail-header">
-                    <div class="detail-id">task: ${escapeHtml(task.id)}</div>
-                    <h2 class="detail-title">${escapeHtml(task.title)}</h2>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <span class="badge badge-category">${escapeHtml(task.category)}</span>
-                        <span class="badge ${diffClass}">Difficulty: ${escapeHtml(task.difficulty)}</span>
-                        <span class="badge badge-timeout">Verifier: ${task.verifier_timeout_sec}s</span>
-                        <span class="badge badge-timeout">Agent: ${task.agent_timeout_sec}s</span>
-                    </div>
-                </div>
+            pane.replaceChildren();
 
-                <div class="callout-box">
-                    <div class="callout-title">Technical Root-Cause & Systems Note</div>
-                    <div class="callout-content">${escapeHtml(task.difficulty_note)}</div>
-                </div>
+            // Header
+            const header = document.createElement('div');
+            header.className = 'detail-header';
 
-                <div class="section-block">
-                    <h3 class="section-heading">Task Statement</h3>
-                    <div class="content-body">${formatMarkdown(task.statement)}</div>
-                </div>
+            const idEl = document.createElement('div');
+            idEl.className = 'detail-id';
+            idEl.textContent = `task: ${task.id}`;
 
-                <div class="section-block">
-                    <h3 class="section-heading">Execution Environment</h3>
-                    <div class="content-body">${formatMarkdown(task.environment)}</div>
-                </div>
+            const titleEl = document.createElement('h2');
+            titleEl.className = 'detail-title';
+            titleEl.textContent = task.title;
 
-                <div class="action-bar">
-                    <button class="btn-action" onclick="copyHarborCmd('${task.id}')">📋 Copy Harbor NOP Command</button>
-                    <button class="btn-action" onclick="copyOracleCmd('${task.id}')">⚡ Copy Harbor Oracle Command</button>
-                </div>
-            `;
+            const headerBadges = document.createElement('div');
+            headerBadges.className = 'task-header-badges';
+
+            const catBadge = document.createElement('span');
+            catBadge.className = 'badge badge-category';
+            catBadge.textContent = task.category;
+
+            const diffBadge = document.createElement('span');
+            diffBadge.className = `badge ${task.difficulty.includes('medium') ? 'badge-difficulty-medium-hard' : 'badge-difficulty-hard'}`;
+            diffBadge.textContent = `Difficulty: ${task.difficulty}`;
+
+            const verifierBadge = document.createElement('span');
+            verifierBadge.className = 'badge badge-timeout';
+            verifierBadge.textContent = `Verifier: ${task.verifier_timeout_sec}s`;
+
+            const agentBadge = document.createElement('span');
+            agentBadge.className = 'badge badge-timeout';
+            agentBadge.textContent = `Agent: ${task.agent_timeout_sec}s`;
+
+            headerBadges.append(catBadge, diffBadge, verifierBadge, agentBadge);
+            header.append(idEl, titleEl, headerBadges);
+
+            // Technical Callout (difficulty_note)
+            const callout = document.createElement('div');
+            callout.className = 'callout-box';
+
+            const calloutTitle = document.createElement('div');
+            calloutTitle.className = 'callout-title';
+            calloutTitle.textContent = 'Technical Root-Cause & Systems Note';
+
+            const calloutContent = document.createElement('div');
+            calloutContent.className = 'callout-content';
+            calloutContent.textContent = task.difficulty_note;
+
+            callout.append(calloutTitle, calloutContent);
+
+            // Statement Section
+            const statementSec = document.createElement('div');
+            statementSec.className = 'section-block';
+
+            const statementHeading = document.createElement('h3');
+            statementHeading.className = 'section-heading';
+            statementHeading.textContent = 'Task Statement';
+
+            const statementBody = document.createElement('pre');
+            statementBody.className = 'content-body pre-wrap';
+            statementBody.textContent = task.statement;
+
+            statementSec.append(statementHeading, statementBody);
+
+            // Environment Section
+            const envSec = document.createElement('div');
+            envSec.className = 'section-block';
+
+            const envHeading = document.createElement('h3');
+            envHeading.className = 'section-heading';
+            envHeading.textContent = 'Execution Environment';
+
+            const envBody = document.createElement('pre');
+            envBody.className = 'content-body pre-wrap';
+            envBody.textContent = task.environment;
+
+            envSec.append(envHeading, envBody);
+
+            // Action Buttons
+            const actionBar = document.createElement('div');
+            actionBar.className = 'action-bar';
+
+            const copyNopBtn = document.createElement('button');
+            copyNopBtn.className = 'btn-action';
+            copyNopBtn.textContent = '📋 Copy Harbor NOP Command';
+            copyNopBtn.onclick = () => copyHarborCmd(task.id);
+
+            const copyOracleBtn = document.createElement('button');
+            copyOracleBtn.className = 'btn-action';
+            copyOracleBtn.textContent = '⚡ Copy Harbor Oracle Command';
+            copyOracleBtn.onclick = () => copyOracleCmd(task.id);
+
+            actionBar.append(copyNopBtn, copyOracleBtn);
+
+            pane.append(header, callout, statementSec, envSec, actionBar);
         }
 
         function copyHarborCmd(id) {
@@ -477,34 +582,6 @@
             const cmd = `harbor run -p ./tasks/${id} -a oracle`;
             navigator.clipboard.writeText(cmd);
             alert(`Copied to clipboard:\n${cmd}`);
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-
-        function formatMarkdown(text) {
-            if (!text) return '';
-            let html = escapeHtml(text);
-            // bold
-            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            // inline code
-            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-            // lists
-            html = html.replace(/^\s*-\s+(.*)$/gm, '<li>$1</li>');
-            html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
-            // paragraphs
-            html = html.split('\n\n').map(p => {
-                if (p.startsWith('<ul>') || p.startsWith('<li>') || p.startsWith('<h')) return p;
-                return `<p>${p.replace(/\n/g, '<br>')}</p>`;
-            }).join('');
-            return html;
         }
 
         fetchTasks();

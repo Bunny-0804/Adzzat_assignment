@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
+"""
+Zero-dependency Python HTTP server serving Azzdat Harbor tasks directly from disk.
+Uses exclusively Python standard library modules.
+"""
 import http.server
-import socketserver
-import os
 import json
+import os
+from pathlib import Path
 import re
-
-try:
-    import tomllib
-except ImportError:
-    import tomli as tomllib
+import socketserver
+import tomllib
 
 PORT = int(os.environ.get("PORT", 8000))
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TASKS_DIR = os.path.join(BASE_DIR, "tasks")
-WEB_DIR = os.path.join(BASE_DIR, "web")
+BASE_DIR = Path(__file__).resolve().parent.parent
+TASKS_DIR = BASE_DIR / "tasks"
+WEB_DIR = BASE_DIR / "web"
 
-def parse_markdown_sections(md_text):
+def parse_markdown_sections(md_text: str) -> dict:
     sections = {}
     current_key = "overview"
     current_lines = []
@@ -42,20 +43,20 @@ def parse_markdown_sections(md_text):
 
     return sections
 
-def load_tasks_from_disk():
+def load_tasks_from_disk() -> list:
     tasks = []
-    if not os.path.exists(TASKS_DIR):
+    if not TASKS_DIR.exists():
         return tasks
 
     for entry in sorted(os.listdir(TASKS_DIR)):
-        task_folder = os.path.join(TASKS_DIR, entry)
-        if not os.path.isdir(task_folder):
+        task_folder = TASKS_DIR / entry
+        if not task_folder.is_dir():
             continue
 
-        toml_path = os.path.join(task_folder, "task.toml")
-        md_path = os.path.join(task_folder, "instruction.md")
+        toml_path = task_folder / "task.toml"
+        md_path = task_folder / "instruction.md"
 
-        if not os.path.exists(toml_path) or not os.path.exists(md_path):
+        if not toml_path.exists() or not md_path.exists():
             continue
 
         with open(toml_path, "rb") as f:
@@ -66,6 +67,8 @@ def load_tasks_from_disk():
 
         sections = parse_markdown_sections(md_content)
         metadata = toml_data.get("metadata", {})
+        verifier_timeout = toml_data.get("verifier", {}).get("timeout_sec", 120.0)
+        agent_timeout = toml_data.get("agent", {}).get("timeout_sec", 600.0)
 
         task_info = {
             "id": metadata.get("id", entry),
@@ -76,8 +79,12 @@ def load_tasks_from_disk():
             "statement": sections.get("statement", ""),
             "environment": sections.get("environment", ""),
             "raw_instruction": md_content,
-            "verifier_timeout_sec": toml_data.get("verifier", {}).get("timeout_sec", 120.0),
-            "agent_timeout_sec": toml_data.get("agent", {}).get("timeout_sec", 600.0),
+            "verifier_timeout_sec": verifier_timeout,
+            "agent_timeout_sec": agent_timeout,
+            "timeouts": {
+                "verifier_sec": verifier_timeout,
+                "agent_sec": agent_timeout
+            }
         }
         tasks.append(task_info)
 
@@ -85,7 +92,7 @@ def load_tasks_from_disk():
 
 class TaskCatalogHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=WEB_DIR, **kwargs)
+        super().__init__(*args, directory=str(WEB_DIR), **kwargs)
 
     def end_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -104,7 +111,6 @@ class TaskCatalogHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(response_data)))
-            self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(response_data)
             return
@@ -118,7 +124,6 @@ class TaskCatalogHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Content-Length", str(len(response_data)))
-                self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(response_data)
             else:
